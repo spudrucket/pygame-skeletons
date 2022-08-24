@@ -1,11 +1,11 @@
 #allows platform independent file paths
 import os
+#allows us to call the pygame class functions
 import pygame
-from pygame.locals import *
 
-#set main directory
+#set platform independant main directory for game files
 main_dir = os.path.split(os.path.abspath(__file__))[0]
-#set folder for the game files
+#set data folder for the game files
 data_dir = os.path.join(main_dir, "data")
 
 #set constants; height and width of screen; height and width of game objects
@@ -19,12 +19,12 @@ HERO_SPEED = 10
 class HeroObject(pygame.sprite.Sprite):
     def __init__(self, speed):
         pygame.sprite.Sprite.__init__(self) # call Sprite initializer
-        self.image, self.rect = load_image("hero.gif")
+        self.image, self.rect = load_image("hero.gif") # rect is used for moving and detecting collisions
         self.speed = speed
         self.attacking = False
     
     def update(self, up=False, down=False, left=False, right=False):
-        #moves the sprite based on the rect attribute
+        #moves the sprite based on the rect attribute tied to keyboard arrows
         if right:
             self.rect.x += self.speed
         if left:
@@ -34,12 +34,12 @@ class HeroObject(pygame.sprite.Sprite):
         if up:
             self.rect.y -= self.speed
     
-    def attack(self, target):
-        #returns true if the hero collides with the target
+    def attack(self, targets_group):
+        #returns the colided with sprite from the group
         if not self.attacking:
             self.attacking = True
-            hitbox = self.rect.inflate(-5, -5)
-            return hitbox.colliderect(target.rect)
+            hitSprite = pygame.sprite.spritecollideany(self, targets_group)
+            return hitSprite
     
     def stopAttack(self):
         self.attacking = False
@@ -128,15 +128,15 @@ def main():
     #draw the background to the screen
     screen.blit(background, (0, 0))
     pygame.display.flip()
-    #create an empty list to hold multiple game objects
-    allSprites = pygame.sprite.RenderPlain()
     #instantiate the player using the 
     player = HeroObject(HERO_SPEED)
-    allSprites.add(player)
+    playerSprites = pygame.sprite.Group(player)
+    #create a group to hold multiple game objects
+    enemySprites = pygame.sprite.Group()
     #instantiate enemies using the GameObject class and add them to the sprites list
     for x in range(5):
         enemy = EnemyObject(x * 40, x)
-        allSprites.add(enemy)
+        enemySprites.add(enemy)
     #main loop for the game
     going = True
     while going:
@@ -158,15 +158,19 @@ def main():
         if keys[pygame.K_RIGHT]:
             player.update(right=True)
         if keys[pygame.K_SPACE]:
-            if player.attack(enemy):
-                enemy.attacked()
-        elif event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
+            hitEnemy = player.attack(enemySprites)
+            try:
+                hitEnemy.attacked()
+            except:
+                continue
             player.stopAttack()
         #update the sprites
-        allSprites.update()
+        playerSprites.update()
+        enemySprites.update()
         #draw background and sprites in new positions
         screen.blit(background, (0, 0))
-        allSprites.draw(screen)
+        playerSprites.draw(screen)
+        enemySprites.draw(screen)
         pygame.display.flip()
         #quit the game on screen exit
         for e in pygame.event.get():
